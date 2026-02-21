@@ -1,5 +1,6 @@
 """
 Medical Report upload and analysis routes (protected).
+Uses Gemini Vision for AI analysis when GEMINI_API_KEY is set and file is an image.
 """
 import logging
 import os
@@ -12,6 +13,11 @@ from core.database import get_db
 from core.deps import get_current_user
 from core.config import settings
 from models.database import User, MedicalReport
+from services.report_analyzer import (
+    analyze_report_with_gemini,
+    simulate_lab_extraction,
+    generate_ai_summary_from_values,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/reports", tags=["Medical Reports"])
@@ -20,6 +26,7 @@ UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 ALLOWED_TYPES = {"application/pdf", "image/png", "image/jpeg", "image/jpg"}
+IMAGE_TYPES = {"image/png", "image/jpeg", "image/jpg"}
 
 
 @router.post("/upload")
@@ -28,7 +35,7 @@ async def upload_report(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Upload a medical report for AI analysis."""
+    """Upload a medical report for AI analysis (Gemini Vision for images when API key is set)."""
     if file.content_type not in ALLOWED_TYPES:
         raise HTTPException(status_code=400, detail="Only PDF, PNG, and JPG files are allowed.")
 
@@ -44,18 +51,40 @@ async def upload_report(
     with open(save_path, "wb") as f:
         f.write(content)
 
-    # AI analysis (MVP: simulate extraction for now, will be replaced with Gemini Vision)
-    extracted = _simulate_lab_extraction(file.filename or "report")
-    ai_summary = _generate_ai_summary(extracted["values"])
+    # AI analysis: Gemini Vision for images when key is set, else simulated
+    values: dict = {}
+    abnormal: list = []
+    ai_summary: str
+
+    if file.content_type in IMAGE_TYPES and settings.GEMINI_API_KEY:
+        try:
+            values, abnormal, ai_summary = analyze_report_with_gemini(
+                content,
+                file.content_type or "image/jpeg",
+                settings.GEMINI_API_KEY,
+            )
+            logger.info("Report analyzed with Gemini Vision.")
+        except Exception as e:
+            logger.warning(f"Gemini report analysis failed, using fallback: {e}")
+            extracted = simulate_lab_extraction(file.filename or "report")
+            values = extracted["values"]
+            abnormal = extracted["abnormal"]
+            ai_summary = generate_ai_summary_from_values(values, abnormal)
+    else:
+        # PDF or no Gemini key: use simulated extraction
+        extracted = simulate_lab_extraction(file.filename or "report")
+        values = extracted["values"]
+        abnormal = extracted["abnormal"]
+        ai_summary = generate_ai_summary_from_values(values, abnormal)
 
     report = MedicalReport(
         user_id=current_user.id,
         file_name=file.filename or "unknown",
         file_url=f"/uploads/{saved_name}",
         file_type="pdf" if "pdf" in (file.content_type or "") else "image",
-        extracted_values=extracted["values"],
+        extracted_values=values,
         ai_summary=ai_summary,
-        abnormal_flags=extracted["abnormal"],
+        abnormal_flags=abnormal,
     )
     db.add(report)
     await db.flush()
@@ -122,32 +151,3 @@ async def get_report(
     }
 
 
-def _simulate_lab_extraction(filename: str) -> dict:
-    """MVP: simulated lab value extraction. Replace with Gemini Vision / OCR."""
-    values = {
-        "Hemoglobin": {"value": "13.5", "unit": "g/dL", "status": "normal", "ref": "12.0-17.5"},
-        "Fasting Glucose": {"value": "126", "unit": "mg/dL", "status": "high", "ref": "70-100"},
-        "Total Cholesterol": {"value": "210", "unit": "mg/dL", "status": "borderline", "ref": "<200"},
-        "HDL Cholesterol": {"value": "45", "unit": "mg/dL", "status": "low", "ref": ">60"},
-        "LDL Cholesterol": {"value": "140", "unit": "mg/dL", "status": "borderline", "ref": "<100"},
-        "Triglycerides": {"value": "180", "unit": "mg/dL", "status": "borderline", "ref": "<150"},
-        "HbA1c": {"value": "6.8", "unit": "%", "status": "high", "ref": "<5.7"},
-        "Creatinine": {"value": "1.0", "unit": "mg/dL", "status": "normal", "ref": "0.7-1.3"},
-    }
-    abnormal = [k for k, v in values.items() if v["status"] != "normal"]
-    return {"values": values, "abnormal": abnormal}
-
-
-def _generate_ai_summary(values: dict) -> str:
-    abnormal = [k for k, v in values.items() if v["status"] != "normal"]
-    if not abnormal:
-        return "All lab values are within normal limits. No immediate concerns detected."
-
-    summary = f"⚠️ {len(abnormal)} values flagged: {', '.join(abnormal)}.\n\n"
-    summary += "Key findings:\n"
-    for name in abnormal:
-        v = values[name]
-        summary += f"• {name}: {v['value']} {v['unit']} ({v['status'].upper()}) — Reference: {v['ref']}\n"
-    summary += "\n📋 Recommended: Schedule a follow-up with your physician for further evaluation."
-    summary += "\n\n⚕️ This is an AI-generated summary and NOT a medical diagnosis."
-    return summary

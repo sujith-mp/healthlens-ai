@@ -16,18 +16,36 @@ export default function RiskPage() {
 
     const update = (k: string, v: any) => setForm({ ...form, [k]: v });
 
+    const num = (v: string) => {
+        const n = Number(v);
+        return typeof n === "number" && !Number.isNaN(n) ? n : undefined;
+    };
+
     const assess = async (type: "diabetes" | "heart-disease") => {
+        const age = num(form.age);
+        const bmi = num(form.bmi);
+        const systolic = num(form.blood_pressure_systolic);
+        const diastolic = num(form.blood_pressure_diastolic);
+        if (age == null || bmi == null || systolic == null || diastolic == null) {
+            toast("Please fill Age, BMI, and Blood Pressure (systolic & diastolic).", "error");
+            return;
+        }
         setLoading(true);
         try {
-            const body: any = {
-                age: Number(form.age), bmi: Number(form.bmi),
-                blood_pressure_systolic: Number(form.blood_pressure_systolic),
-                blood_pressure_diastolic: Number(form.blood_pressure_diastolic),
-                smoking: form.smoking, alcohol: form.alcohol,
+            const body: Record<string, unknown> = {
+                age,
+                bmi,
+                blood_pressure_systolic: systolic,
+                blood_pressure_diastolic: diastolic,
+                smoking: form.smoking,
+                alcohol: form.alcohol,
             };
-            if (form.glucose) body.glucose = Number(form.glucose);
-            if (form.cholesterol) body.cholesterol = Number(form.cholesterol);
-            if (form.insulin) body.insulin = Number(form.insulin);
+            const glucoseVal = num(form.glucose);
+            if (glucoseVal != null) body.glucose = glucoseVal;
+            const cholesterolVal = num(form.cholesterol);
+            if (cholesterolVal != null) body.cholesterol = cholesterolVal;
+            const insulinVal = num(form.insulin);
+            if (insulinVal != null) body.insulin = insulinVal;
 
             const res = await api(`/api/v1/risk/${type}`, { method: "POST", body: JSON.stringify(body) });
             setResult(res);
@@ -76,11 +94,20 @@ export default function RiskPage() {
                     </label>
                 </div>
 
+                <p className="text-xs text-[var(--text-secondary)]">Age, BMI, and Blood Pressure (systolic & diastolic) are required.</p>
                 <div className="flex gap-3 pt-2">
-                    <button className="btn-primary flex-1" disabled={loading || !form.age || !form.bmi} onClick={() => assess("diabetes")}>
+                    <button
+                        className="btn-primary flex-1"
+                        disabled={loading || !form.age?.trim() || !form.bmi?.trim() || !form.blood_pressure_systolic?.trim() || !form.blood_pressure_diastolic?.trim()}
+                        onClick={() => assess("diabetes")}
+                    >
                         {loading ? "Analyzing..." : "🫀 Diabetes Risk"}
                     </button>
-                    <button className="btn-secondary flex-1" disabled={loading || !form.age || !form.bmi} onClick={() => assess("heart-disease")}>
+                    <button
+                        className="btn-secondary flex-1"
+                        disabled={loading || !form.age?.trim() || !form.bmi?.trim() || !form.blood_pressure_systolic?.trim() || !form.blood_pressure_diastolic?.trim()}
+                        onClick={() => assess("heart-disease")}
+                    >
                         {loading ? "Analyzing..." : "💓 Heart Disease Risk"}
                     </button>
                 </div>

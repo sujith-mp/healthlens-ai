@@ -1,7 +1,10 @@
 /**
  * API utility — centralized fetch wrapper for the HealthLens backend.
+ * In development, defaults to http://localhost:8000 when NEXT_PUBLIC_API_URL is unset.
  */
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_BASE =
+    process.env.NEXT_PUBLIC_API_URL ||
+    (process.env.NODE_ENV === "production" ? "" : "http://localhost:8000");
 
 export function getToken(): string | null {
     if (typeof window === "undefined") return null;
@@ -16,13 +19,25 @@ export function clearToken(): void {
     localStorage.removeItem("token");
 }
 
-export async function api<T = any>(
+function headersToRecord(h: Headers): Record<string, string> {
+    const r: Record<string, string> = {};
+    h.forEach((v, k) => {
+        r[k] = v;
+    });
+    return r;
+}
+
+export async function api<T = unknown>(
     path: string,
     options: RequestInit = {}
 ): Promise<T> {
     const token = getToken();
+    const initialHeaders =
+        options.headers instanceof Headers
+            ? headersToRecord(options.headers)
+            : { ...(options.headers as Record<string, string>) };
     const headers: Record<string, string> = {
-        ...(options.headers as Record<string, string>),
+        ...initialHeaders,
     };
 
     if (token) {
@@ -54,7 +69,9 @@ export async function api<T = any>(
             throw new Error(error.detail || `Error ${res.status}`);
         } else {
             const text = await res.text();
-            console.error(`Backend returned non-JSON error (${res.status}):`, text);
+            if (process.env.NODE_ENV === "development") {
+                console.error(`Backend returned non-JSON error (${res.status}):`, text);
+            }
             throw new Error(`Server Error ${res.status}. Please check console.`);
         }
     }

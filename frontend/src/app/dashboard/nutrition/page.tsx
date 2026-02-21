@@ -8,9 +8,7 @@ export default function NutritionPage() {
     const { toast } = useToast();
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState<any>(null);
-    const [risks, setRisks] = useState([
-        { disease_type: "diabetes", risk_category: "moderate" },
-    ]);
+    const [risks, setRisks] = useState<{ disease_type: string; risk_category: string }[]>([]);
 
     const generate = async () => {
         setLoading(true);
@@ -32,12 +30,19 @@ export default function NutritionPage() {
         <div className="max-w-3xl mx-auto space-y-8 animate-fade-in-up">
             <div>
                 <h1 className="text-2xl font-bold">Nutrition & Lifestyle Plan</h1>
-                <p className="text-[var(--text-secondary)] mt-1">Personalized recommendations based on your risk profile</p>
+                <p className="text-[var(--text-secondary)] mt-1">Daily nutrition and lifestyle tips — for everyone or tailored to your risk profile</p>
             </div>
 
             <div className="glass-card p-6 space-y-4">
-                <h2 className="font-semibold">Select Risk Context</h2>
+                <h2 className="font-semibold">Who is this plan for?</h2>
+                <p className="text-sm text-[var(--text-secondary)]">Choose &quot;General wellness&quot; for everyday tips, or add risk areas if you&apos;ve done a risk assessment.</p>
                 <div className="flex gap-3 flex-wrap">
+                    <button
+                        onClick={() => setRisks([])}
+                        className={`px-4 py-2 rounded-xl text-sm font-medium transition ${risks.length === 0 ? "bg-[var(--color-primary-500)] text-white" : "bg-[var(--bg)] text-[var(--text-secondary)]"}`}
+                    >
+                        🌱 General wellness (everyone)
+                    </button>
                     {["diabetes", "heart_disease"].map((d) => {
                         const active = risks.some(r => r.disease_type === d);
                         return (
@@ -47,16 +52,15 @@ export default function NutritionPage() {
                                     if (active) setRisks(risks.filter(r => r.disease_type !== d));
                                     else setRisks([...risks, { disease_type: d, risk_category: "moderate" }]);
                                 }}
-                                className={`px-4 py-2 rounded-xl text-sm font-medium transition ${active ? "bg-[var(--color-primary-500)] text-white" : "bg-[var(--bg)] text-[var(--text-secondary)]"
-                                    }`}
+                                className={`px-4 py-2 rounded-xl text-sm font-medium transition ${active ? "bg-[var(--color-primary-500)] text-white" : "bg-[var(--bg)] text-[var(--text-secondary)]"}`}
                             >
-                                {d === "diabetes" ? "🫀 Diabetes" : "💓 Heart Disease"}
+                                {d === "diabetes" ? "🫀 Diabetes focus" : "💓 Heart health focus"}
                             </button>
                         );
                     })}
                 </div>
                 <button className="btn-primary w-full py-3" onClick={generate} disabled={loading}>
-                    {loading ? "Generating..." : "🥗 Generate Nutrition Plan"}
+                    {loading ? "Generating..." : "🥗 Generate Nutrition & Lifestyle Plan"}
                 </button>
             </div>
 

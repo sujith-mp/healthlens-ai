@@ -47,8 +47,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     const navItems = [
         { href: "/dashboard", label: "Dashboard", icon: "📊" },
         { href: "/dashboard/risk", label: "Risk Assessment", icon: "🫀" },
-        { href: "/dashboard/symptoms", label: "Symptom Checker", icon: "🔍" },
-        { href: "/dashboard/chat", label: "AI Chatbot", icon: "🤖" },
+        { href: "/dashboard/chat", label: "Health Assistant", icon: "🤖" },
         { href: "/dashboard/nutrition", label: "Nutrition Plan", icon: "🥗" },
         { href: "/dashboard/reports", label: "Medical Reports", icon: "📄" },
         { href: "/dashboard/medications", label: "Medications", icon: "💊" },
