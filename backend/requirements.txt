@@ -1,0 +1,13 @@
+fastapi[standard]
+uvicorn[standard]
+sqlalchemy[asyncio]
+aiosqlite
+python-jose[cryptography]
+bcrypt
+pydantic-settings
+python-multipart
+google-auth
+google-auth-httplib2
+google-auth-oauthlib
+google-genai
+requests
