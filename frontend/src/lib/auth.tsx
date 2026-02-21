@@ -66,10 +66,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(userData);
     }
 
-    async function googleLogin(idToken: string) {
+    async function googleLogin(token: string) {
         const data = await api<{ access_token: string }>("/api/v1/auth/google", {
             method: "POST",
-            body: JSON.stringify({ token: idToken }),
+            body: JSON.stringify({ token }),
         });
         setToken(data.access_token);
         const userData = await api<User>("/api/v1/auth/me");

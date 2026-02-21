@@ -10,9 +10,8 @@ declare global {
         google?: {
             accounts: {
                 id: {
-                    initialize: (config: Record<string, unknown>) => void;
-                    prompt: (callback?: (notification: { isNotDisplayed: () => boolean; isSkippedMoment: () => boolean }) => void) => void;
-                    renderButton: (element: HTMLElement, config: Record<string, unknown>) => void;
+                    initialize: (config: { client_id: string; callback: (response: { credential: string }) => void }) => void;
+                    renderButton: (element: HTMLElement, config: { theme?: string; size?: string; width?: number; text?: string; shape?: string }) => void;
                 };
             };
         };
@@ -29,43 +28,53 @@ export default function LoginPage() {
     const [name, setName] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
-
     const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
 
-    const handleGoogleResponse = useCallback(async (response: { credential: string }) => {
-        setLoading(true);
-        setError("");
-        try {
-            await googleLogin(response.credential);
-            toast("Welcome to HealthLens AI!", "success");
-            router.push("/dashboard");
-        } catch (err: unknown) {
-            const message = err instanceof Error ? err.message : "Google login failed";
-            setError(message);
-            toast(message, "error");
-        } finally {
-            setLoading(false);
-        }
-    }, [googleLogin, toast, router]);
+    const handleGoogleResponse = useCallback(
+        async (response: { credential: string }) => {
+            setLoading(true);
+            setError("");
+            try {
+                await googleLogin(response.credential);
+                toast("Welcome to HealthLens AI!", "success");
+                router.push("/dashboard");
+            } catch (err: unknown) {
+                const message = err instanceof Error ? err.message : "Google sign-in failed";
+                setError(message);
+                toast(message, "error");
+            } finally {
+                setLoading(false);
+            }
+        },
+        [googleLogin, toast, router]
+    );
 
     useEffect(() => {
         if (!googleClientId) return;
 
-        // Wait for the Google script to load
+        const loadScript = () => {
+            if (document.getElementById("gsi-script")) return;
+            const script = document.createElement("script");
+            script.id = "gsi-script";
+            script.src = "https://accounts.google.com/gsi/client";
+            script.async = true;
+            script.defer = true;
+            document.head.appendChild(script);
+        };
+
         const initGoogle = () => {
             if (window.google?.accounts?.id) {
                 window.google.accounts.id.initialize({
                     client_id: googleClientId,
                     callback: handleGoogleResponse,
                 });
-                // Render the button inside our container
                 const btnContainer = document.getElementById("google-signin-btn");
                 if (btnContainer) {
                     btnContainer.innerHTML = "";
                     window.google.accounts.id.renderButton(btnContainer, {
                         theme: "outline",
                         size: "large",
-                        width: "100%",
+                        width: 320,
                         text: "continue_with",
                         shape: "pill",
                     });
@@ -73,18 +82,17 @@ export default function LoginPage() {
             }
         };
 
-        // If script already loaded
+        loadScript();
         if (window.google?.accounts?.id) {
             initGoogle();
         } else {
-            // Wait for script load
-            const interval = setInterval(() => {
+            const checkGoogle = setInterval(() => {
                 if (window.google?.accounts?.id) {
-                    clearInterval(interval);
+                    clearInterval(checkGoogle);
                     initGoogle();
                 }
-            }, 200);
-            return () => clearInterval(interval);
+            }, 100);
+            return () => clearInterval(checkGoogle);
         }
     }, [googleClientId, handleGoogleResponse]);
 
@@ -101,7 +109,15 @@ export default function LoginPage() {
             toast("Welcome to HealthLens AI!", "success");
             router.push("/dashboard");
         } catch (err: unknown) {
-            const message = err instanceof Error ? err.message : "Something went wrong";
+            const rawMessage = err instanceof Error ? err.message : "Something went wrong";
+            const isNetworkError =
+                typeof rawMessage === "string" &&
+                (rawMessage.toLowerCase().includes("fetch") ||
+                    rawMessage.toLowerCase().includes("network") ||
+                    rawMessage === "Failed to fetch");
+            const message = isNetworkError
+                ? "Cannot reach the server. Check your connection and that the app is configured correctly."
+                : rawMessage;
             setError(message);
             toast(message, "error");
         } finally {
@@ -178,15 +194,14 @@ export default function LoginPage() {
                     <div className="flex-1 h-px bg-[var(--border)]" />
                 </div>
 
-                {/* Google Sign-In: rendered button if configured, fallback custom button otherwise */}
                 {googleClientId ? (
-                    <div id="google-signin-btn" className="flex justify-center" />
+                    <div id="google-signin-btn" className="flex justify-center min-h-[44px]" />
                 ) : (
                     <button
                         type="button"
-                        disabled
+                        onClick={() => toast("Google OAuth requires NEXT_PUBLIC_GOOGLE_CLIENT_ID in your environment to enable.", "info")}
                         title="Set NEXT_PUBLIC_GOOGLE_CLIENT_ID in .env.local to enable"
-                        className="btn-secondary w-full flex items-center justify-center gap-3 py-3 opacity-60 cursor-not-allowed"
+                        className="btn-secondary w-full flex items-center justify-center gap-3 py-3"
                     >
                         <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden>
                             <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" />
