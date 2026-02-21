@@ -2,6 +2,8 @@
 
 import { useState, useRef, useEffect } from "react";
 import { api } from "@/lib/api";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 interface Message {
     role: "user" | "assistant";
@@ -68,13 +70,22 @@ export default function ChatPage() {
                     </div>
                 )}
 
+
                 {messages.map((m, i) => (
                     <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-                        <div className={`max-w-[80%] p-3 rounded-2xl text-sm whitespace-pre-wrap ${m.role === "user"
-                                ? "bg-[var(--color-primary-500)] text-white rounded-br-md"
-                                : "bg-[var(--bg)] rounded-bl-md"
+                        <div className={`max-w-[85%] p-4 rounded-2xl text-sm ${m.role === "user"
+                            ? "bg-[var(--color-primary-500)] text-white rounded-br-md whitespace-pre-wrap"
+                            : "bg-[var(--bg)] rounded-bl-md border border-[var(--border)] shadow-sm"
                             }`}>
-                            {m.content}
+                            {m.role === "assistant" ? (
+                                <div className="prose prose-sm dark:prose-invert max-w-none prose-p:leading-relaxed prose-pre:bg-[var(--bg-secondary)]">
+                                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                        {m.content}
+                                    </ReactMarkdown>
+                                </div>
+                            ) : (
+                                m.content
+                            )}
                         </div>
                     </div>
                 ))}

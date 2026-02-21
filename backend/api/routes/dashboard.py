@@ -46,18 +46,18 @@ async def get_dashboard_summary(
         for r in risks
     ]
 
-    # Counts
-    total_assessments = (await db.execute(
-        select(func.count()).select_from(RiskPrediction).where(RiskPrediction.user_id == user_id)
-    )).scalar() or 0
+    import asyncio
+    
+    # Run independent count queries concurrently
+    total_assessments_res, total_symptom_checks_res, total_reports_res = await asyncio.gather(
+        db.execute(select(func.count()).select_from(RiskPrediction).where(RiskPrediction.user_id == user_id)),
+        db.execute(select(func.count()).select_from(SymptomLog).where(SymptomLog.user_id == user_id)),
+        db.execute(select(func.count()).select_from(MedicalReport).where(MedicalReport.user_id == user_id))
+    )
 
-    total_symptom_checks = (await db.execute(
-        select(func.count()).select_from(SymptomLog).where(SymptomLog.user_id == user_id)
-    )).scalar() or 0
-
-    total_reports = (await db.execute(
-        select(func.count()).select_from(MedicalReport).where(MedicalReport.user_id == user_id)
-    )).scalar() or 0
+    total_assessments = total_assessments_res.scalar() or 0
+    total_symptom_checks = total_symptom_checks_res.scalar() or 0
+    total_reports = total_reports_res.scalar() or 0
 
     # Recent activity
     recent_activity = []

@@ -86,7 +86,7 @@ class RiskPrediction(Base):
     input_data = Column(JSON, nullable=False)
     feature_importance = Column(JSON, nullable=True)
     explanation = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=utc_now)
+    created_at = Column(DateTime, default=utc_now, index=True)
 
     user = relationship("User", back_populates="risk_predictions")
 
@@ -102,7 +102,7 @@ class SymptomLog(Base):
     possible_conditions = Column(JSON, nullable=True)
     urgency_level = Column(String(20), nullable=True)
     recommendations = Column(JSON, nullable=True)
-    created_at = Column(DateTime, default=utc_now)
+    created_at = Column(DateTime, default=utc_now, index=True)
 
     user = relationship("User", back_populates="symptom_logs")
 
@@ -120,7 +120,7 @@ class MedicalReport(Base):
     extracted_values = Column(JSON, nullable=True)
     ai_summary = Column(Text, nullable=True)
     abnormal_flags = Column(JSON, nullable=True)
-    created_at = Column(DateTime, default=utc_now)
+    created_at = Column(DateTime, default=utc_now, index=True)
 
     user = relationship("User", back_populates="medical_reports")
 
@@ -135,7 +135,7 @@ class ChatMessage(Base):
     content = Column(Text, nullable=False)
     tool_calls = Column(JSON, nullable=True)
     metadata_col = Column("metadata", JSON, nullable=True)
-    created_at = Column(DateTime, default=utc_now)
+    created_at = Column(DateTime, default=utc_now, index=True)
 
     user = relationship("User", back_populates="chat_messages")
 
@@ -149,7 +149,7 @@ class NutritionPlan(Base):
     risk_context = Column(JSON, nullable=True)
     diet_recommendations = Column(JSON, nullable=True)
     lifestyle_recommendations = Column(JSON, nullable=True)
-    created_at = Column(DateTime, default=utc_now)
+    created_at = Column(DateTime, default=utc_now, index=True)
 
     user = relationship("User", back_populates="nutrition_plans")
 
@@ -179,7 +179,7 @@ class Medication(Base):
     frequency = Column(String(100), nullable=True)
     notes = Column(Text, nullable=True)
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=utc_now)
+    created_at = Column(DateTime, default=utc_now, index=True)
 
     user = relationship("User", back_populates="medications")
     logs = relationship("MedicationLog", back_populates="medication", cascade="all, delete-orphan")

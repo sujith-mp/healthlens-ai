@@ -48,8 +48,15 @@ export async function api<T = any>(
     }
 
     if (!res.ok) {
-        const error = await res.json().catch(() => ({ detail: "Request failed" }));
-        throw new Error(error.detail || `Error ${res.status}`);
+        const contentType = res.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+            const error = await res.json().catch(() => ({ detail: "Request failed" }));
+            throw new Error(error.detail || `Error ${res.status}`);
+        } else {
+            const text = await res.text();
+            console.error(`Backend returned non-JSON error (${res.status}):`, text);
+            throw new Error(`Server Error ${res.status}. Please check console.`);
+        }
     }
 
     return res.json();
